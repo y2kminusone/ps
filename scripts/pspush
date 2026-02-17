@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+set -e
+cd ~/Desktop/ps
+
+git add -A
+git diff --cached --quiet && echo "No changes" && exit 0
+
+latest=$(git diff --cached --name-only | tail -n 1)
+
+platform=""
+pid=""
+if [[ "$latest" =~ ^(boj|swea|codetree)/([0-9]+)/ ]]; then
+  platform="${BASH_REMATCH[1]}"
+  pid="${BASH_REMATCH[2]}"
+fi
+
+msg="${1:-PS}"
+if [[ -n "$platform" && -n "$pid" && -f "$platform/$pid/meta.json" ]]; then
+  title=$(python - << 'PY' "$platform/$pid/meta.json"
+import json,sys
+m=json.load(open(sys.argv[1],encoding="utf-8"))
+print(m.get("title",""))
+PY
+)
+  tier=$(python - << 'PY' "$platform/$pid/meta.json"
+import json,sys
+m=json.load(open(sys.argv[1],encoding="utf-8"))
+print(m.get("tier_name",""))
+PY
+)
+  if [[ -n "$tier" && -n "$title" ]]; then
+    msg="$(echo "$platform" | tr '[:lower:]' '[:upper:]') $pid [$tier] $title"
+  else
+    msg="$(echo "$platform" | tr '[:lower:]' '[:upper:]') $pid"
+  fi
+fi
+
+git commit -m "$msg"
+git push
